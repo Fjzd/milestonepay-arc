@@ -6,6 +6,7 @@ A buyer funds a job in USDC, split into milestones. The seller marks each milest
 
 - **Live app:** https://illustrious-taffy-b35677.netlify.app
 - **Arc Studio project:** https://studio.arc.io/app/934f1823-1290-4f23-a6ef-11b86cbc57f7
+- **Demo video:** [docs/milestonepay-demo.mp4](docs/milestonepay-demo.mp4) ([download](https://github.com/Fjzd/milestonepay-arc/releases/download/v1.0/milestonepay-demo.mp4))
 - **Mainnet contract:** [`0x396ba33d1f7ed6fd1f92d9037e470807d5d23ada`](https://explorer.arc.io/address/0x396ba33d1f7ed6fd1f92d9037e470807d5d23ada)
 
 ## Mainnet demo (real USDC, escrow #0, 0.5 USDC)
