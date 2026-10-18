@@ -8,7 +8,7 @@
  */
 
 import { http, createConfig } from 'wagmi'
-import { mainnet } from 'wagmi/chains'
+import { mainnet, base, baseSepolia, arbitrum, arbitrumSepolia, sepolia } from 'wagmi/chains'
 import { arcTestnet, arc } from 'viem/chains'
 import { getDefaultConfig } from 'connectkit'
 import { registerChain } from './tracing'
@@ -20,18 +20,17 @@ registerChain(arc.id, arc.rpcUrls.default.http[0])
 export const ARC_MAINNET_CHAIN_ID = arc.id       // 5042
 export const ARC_TESTNET_CHAIN_ID = arcTestnet.id // 5042002
 
-// getDefaultConfig wires up:
-//   - injected()       → browser extension wallets (MetaMask, Rabby, Uniswap desktop, etc.)
-//   - walletConnect()  → QR-code modal for ANY mobile wallet (Uniswap mobile, Rainbow, etc.)
-//   - coinbaseWallet() → Coinbase Wallet (both extension and mobile via WC QR)
-// All three are enabled when walletConnectProjectId is provided.
-// Without a project ID the build still works but the WalletConnect / QR option is hidden.
-// import.meta.env values are typed `any` by Vite; cast explicitly so strict-mode
-// lint passes. The value is always a string (or undefined → empty-string fallback).
+// import.meta.env values are typed `any` by Vite; cast explicitly.
 const wcProjectId: string = (import.meta.env.VITE_WALLETCONNECT_PROJECT_ID as string | undefined) ?? ''
 
-// getDefaultConfig returns CreateConfigParameters (not a live Config).
-// Wrap with createConfig to produce the runtime Config object wagmi needs.
+// getDefaultConfig wires up injected + walletConnect QR + coinbaseWallet.
+// WalletConnect/QR requires walletConnectProjectId to be set.
+// Chains listed here are selectable in the ConnectKit modal and reachable via WC.
+//   Arc Mainnet  — default (first), escrow contract
+//   Arc Testnet  — for dev/testing
+//   Base/Ethereum/Arbitrum — CCTP V2 source chains (mainnet)
+//   Base Sepolia/Eth Sepolia/Arbitrum Sepolia — CCTP V2 source chains (testnet)
+//   mainnet — ENS resolution only, not shown as an app chain
 export const config = createConfig(
   getDefaultConfig({
     appName: 'MilestonePay',
@@ -39,13 +38,16 @@ export const config = createConfig(
     appUrl: typeof window !== 'undefined' ? window.location.origin : 'https://milestonepay.app',
     walletConnectProjectId: wcProjectId,
 
-    // Arc Mainnet first = default chain in ConnectKit modal.
-    // Arc Testnet second so users can switch to it; mainnet for ENS only.
-    chains: [arc, arcTestnet, mainnet],
+    chains: [arc, arcTestnet, base, mainnet, arbitrum, baseSepolia, sepolia, arbitrumSepolia],
     transports: {
-      [arcTestnet.id]: http('https://rpc.testnet.arc.io'),
-      [arc.id]:        http('https://rpc.mainnet.arc.io'),
-      [mainnet.id]:    http(), // ENS only
+      [arc.id]:              http('https://rpc.mainnet.arc.io'),
+      [arcTestnet.id]:       http('https://rpc.testnet.arc.io'),
+      [base.id]:             http(),
+      [mainnet.id]:          http(),
+      [arbitrum.id]:         http(),
+      [baseSepolia.id]:      http(),
+      [sepolia.id]:          http(),
+      [arbitrumSepolia.id]:  http(),
     },
   }),
 )

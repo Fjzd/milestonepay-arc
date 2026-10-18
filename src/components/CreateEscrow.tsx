@@ -1,10 +1,10 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useSwitchChain } from 'wagmi'
 import { parseUnits, decodeEventLog } from 'viem'
 import { toast } from 'sonner'
 import { MILESTONE_PAY, CHAIN_ID, USDC, ZERO_ADDRESS } from '../contract'
 import { Card, Button, Input, SectionHead, Divider } from './ui'
-import { useRouter } from './Router'
+import { useRouter, Link } from './Router'
 
 interface MilestoneInput {
   description: string
@@ -29,28 +29,32 @@ export function CreateEscrow() {
     { description: '', amount: '' },
   ])
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [copied, setCopied] = useState(false)
 
   const { writeContract, data: hash, isPending } = useWriteContract()
   const { isLoading: isConfirming, isSuccess, data: receipt } = useWaitForTransactionReceipt({ hash })
 
-  // Pull new escrow ID from receipt logs
-  React.useEffect(() => {
-    if (isSuccess && receipt) {
-      for (const log of receipt.logs) {
-        try {
-          const decoded = decodeEventLog({ abi: MILESTONE_PAY.abi, ...log })
-          if (decoded.eventName === 'EscrowCreated') {
-            const args = decoded.args as unknown as { escrowId: bigint }
-            const id = String(args.escrowId)
-            toast.success(`Escrow #${id} created! Share the payment link.`)
-            navigate(`/escrow/${id}`)
-          }
-        } catch {
-          // other logs
+  // Derive new escrow ID directly from the receipt — no setState in effect needed.
+  const createdId = useMemo<string | null>(() => {
+    if (!isSuccess || !receipt) return null
+    for (const log of receipt.logs) {
+      try {
+        const decoded = decodeEventLog({ abi: MILESTONE_PAY.abi, ...log })
+        if (decoded.eventName === 'EscrowCreated') {
+          const args = decoded.args as unknown as { escrowId: bigint }
+          return String(args.escrowId)
         }
+      } catch {
+        // other logs
       }
     }
-  }, [isSuccess, receipt, navigate])
+    return null
+  }, [isSuccess, receipt])
+
+  // Fire toast when createdId first appears (toast = external system, not setState).
+  React.useEffect(() => {
+    if (createdId) toast.success(`Escrow #${createdId} created!`)
+  }, [createdId])
 
   function validate(): boolean {
     const e: Record<string, string> = {}
@@ -105,6 +109,81 @@ export function CreateEscrow() {
       functionName: 'createEscrow',
       args: [buyer as `0x${string}`, arbiterAddr, reviewWindowSeconds, deadline, descs, amounts],
     })
+  }
+
+  function buildPayLink(id: string) {
+    return `${window.location.origin}${window.location.pathname}#/pay/${id}`
+  }
+
+  function handleCopyLink(id: string) {
+    navigator.clipboard.writeText(buildPayLink(id)).then(
+      () => { setCopied(true); setTimeout(() => setCopied(false), 2000) },
+      () => toast.error('Copy failed — copy the URL manually'),
+    )
+  }
+
+  // ── Success screen ────────────────────────────────────────────────────────
+  if (createdId) {
+    const link = buildPayLink(createdId)
+    return (
+      <div className="max-w-lg mx-auto px-4 py-16 flex flex-col items-center gap-6">
+        {/* Checkmark */}
+        <div
+          className="w-16 h-16 rounded-full flex items-center justify-center"
+          style={{ background: 'rgba(26,128,71,0.12)' }}
+        >
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </div>
+
+        <div className="text-center">
+          <p className="display font-700 text-xl" style={{ color: 'var(--ink)' }}>
+            Escrow #{createdId} created
+          </p>
+          <p className="text-sm mt-1" style={{ color: 'var(--muted)' }}>
+            Share this link with your client so they can fund the escrow.
+          </p>
+        </div>
+
+        {/* Pay link box */}
+        <Card className="w-full flex flex-col gap-3">
+          <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--muted)' }}>
+            Payment link
+          </p>
+          <div
+            className="rounded-lg px-3 py-2 text-xs font-mono break-all select-all"
+            style={{ background: 'var(--surface-muted)', color: 'var(--ink)' }}
+          >
+            {link}
+          </div>
+          <div className="flex gap-2">
+            <Button
+              className="flex-1"
+              variant="ghost"
+              onClick={() => handleCopyLink(createdId)}
+            >
+              {copied ? '✓ Copied!' : 'Copy link'}
+            </Button>
+            <a href={`#/pay/${createdId}`} target="_blank" rel="noopener noreferrer" className="flex-1">
+              <Button className="w-full">Open payment page</Button>
+            </a>
+          </div>
+        </Card>
+
+        {/* Navigation shortcuts */}
+        <div className="flex gap-3 text-sm">
+          <button
+            onClick={() => navigate(`/escrow/${createdId}`)}
+            style={{ color: 'var(--accent-hover)' }}
+          >
+            View escrow detail →
+          </button>
+          <span style={{ color: 'var(--border)' }}>|</span>
+          <Link href="/" style={{ color: 'var(--muted)' }}>Back to dashboard</Link>
+        </div>
+      </div>
+    )
   }
 
   if (!address) {
@@ -226,7 +305,7 @@ export function CreateEscrow() {
           disabled={isPending || isConfirming || isSuccess}
         >
           {isWrongChain
-            ? 'Switch to Arc Testnet'
+            ? 'Switch to Arc Mainnet'
             : isPending
             ? 'Confirm in wallet…'
             : isConfirming

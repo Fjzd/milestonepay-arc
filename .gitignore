@@ -30,9 +30,9 @@ Thumbs.db
 *.log
 /tmp/
 
-# Bun lockfile is committed intentionally (reproducible installs)
-# bun.lock — keep
-
-# Studio session logs
+# Arc Studio runtime traces (auto-generated, never commit)
 console.jsonl
 traces.jsonl
+
+# Bun lockfile is committed intentionally (reproducible installs)
+# bun.lock — keep

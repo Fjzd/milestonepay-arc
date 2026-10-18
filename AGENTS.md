@@ -18,6 +18,8 @@ MilestonePay lets freelancers create multi-milestone USDC escrows on Arc. Each m
 - Wallet: injected + WalletConnect QR (mobile wallets)
 - Default chain: Arc Mainnet (Chain ID: 5042); Arc Testnet (5042002) selectable
 - Token: USDC (6 decimals, 0x3600000000000000000000000000000000000000, same on both chains)
+- Cross-chain pay: CCTP V2 `depositForBurnWithHook` (Base/Ethereum/Arbitrum → Arc) via Circle Forwarding Service
+- Iris polling: `https://iris-api.circle.com/v2/messages/{srcDomain}?transactionHash={burnTx}` until `status=complete`
 - Routing: hash-based (src/components/Router.tsx)
 - Toasts: Sonner
 
@@ -41,11 +43,15 @@ Deployed by: `0x9421b89ffd0453304c7dc3eb2829e300d26a52d8`
 - `src/components/Dashboard.tsx` — / — escrow list for connected wallet
 - `src/components/CreateEscrow.tsx` — /create — seller creates escrow
 - `src/components/EscrowDetail.tsx` — /escrow/:id — full milestone management
-- `src/components/PayLink.tsx` — /pay/:id — buyer-facing funding page (shareable)
+- `src/components/PayLink.tsx` — /pay/:id — buyer-facing funding page with Arc + cross-chain tabs
+- `src/components/CrossChainPay.tsx` — CCTP V2 bridge+fund flow (Base/ETH/Arb → Arc)
 - `src/components/Profile.tsx` — /profile, /profile/:address — on-chain reputation
 - `src/components/ui.tsx` — shared UI primitives (Card, Button, Input, Badge, etc.)
+- `src/cctp.ts` — CCTP V2 constants, ABIs, fee math, hookData, Iris polling
+- `src/config.ts` — wagmi config (Arc Mainnet default + Arc Testnet, Base, Ethereum, Arbitrum)
+- `cctp.test.ts` — 25 Bun unit tests for fee math, hookData, address encoding, chain config
 - `contracts/MilestonePay.sol` — main contract
-- `contracts/test/MilestonePayTest.t.sol` — 85 Foundry unit tests (all pass)
+- `contracts/test/MilestonePayTest.t.sol` — 87 Foundry unit tests (all pass)
 
 ## Contract Surface
 

@@ -1,7 +1,7 @@
 /**
  * /pay/:id — shareable page for a client to fund an unfunded escrow.
  */
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useSwitchChain, useReadContract } from 'wagmi'
 import { formatUnits } from 'viem'
 import { erc20Abi } from 'viem'
@@ -11,9 +11,11 @@ import { escrowStatusLabel } from '../contract'
 import type { EscrowData } from '../contract'
 import { Card, Button, SectionHead, EscrowBadge, Addr, Divider } from './ui'
 import { useRouter } from './Router'
+import { CrossChainPay } from './CrossChainPay'
 
 export function PayLink({ id }: { id: string }) {
   const escrowId = BigInt(id)
+  const [payTab, setPayTab] = useState<'arc' | 'crosschain'>('arc')
   const { address, chainId } = useAccount()
   const { switchChain } = useSwitchChain()
   const { navigate } = useRouter()
@@ -176,28 +178,59 @@ export function PayLink({ id }: { id: string }) {
 
         {address && isUnfunded && isBuyer && (
           <div className="flex flex-col gap-3">
-            {needsApproval ? (
-              <Button
-                onClick={handleApprove}
-                loading={isApprovePending || isApproveConfirming}
-                variant="ghost"
-              >
-                {isWrongChain ? 'Switch to Arc Testnet' : isApprovePending ? 'Confirm approval…' : isApproveConfirming ? 'Approving…' : `Approve ${formatUnits(totalAmount, USDC.decimals)} USDC`}
-              </Button>
-            ) : null}
-            <Button
-              onClick={handleFund}
-              loading={isFundPending || isFundConfirming}
-              disabled={needsApproval || isFundPending || isFundConfirming}
-            >
-              {isWrongChain
-                ? 'Switch to Arc Testnet'
-                : isFundPending
-                ? 'Confirm in wallet…'
-                : isFundConfirming
-                ? 'Funding…'
-                : `Fund ${formatUnits(totalAmount, USDC.decimals)} USDC`}
-            </Button>
+            {/* ── Payment method tabs ── */}
+            <div className="flex rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+              {(['arc', 'crosschain'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setPayTab(tab)}
+                  className="flex-1 py-2 text-xs font-semibold transition-colors"
+                  style={{
+                    background: payTab === tab ? 'var(--accent)' : 'transparent',
+                    color: payTab === tab ? '#fff' : 'var(--muted)',
+                  }}
+                >
+                  {tab === 'arc' ? 'Pay on Arc' : 'Pay from Base / ETH / Arb'}
+                </button>
+              ))}
+            </div>
+
+            {/* ── Arc direct payment ── */}
+            {payTab === 'arc' && (
+              <>
+                {needsApproval ? (
+                  <Button
+                    onClick={handleApprove}
+                    loading={isApprovePending || isApproveConfirming}
+                    variant="ghost"
+                  >
+                    {isWrongChain ? 'Switch to Arc' : isApprovePending ? 'Confirm approval…' : isApproveConfirming ? 'Approving…' : `Approve ${formatUnits(totalAmount, USDC.decimals)} USDC`}
+                  </Button>
+                ) : null}
+                <Button
+                  onClick={handleFund}
+                  loading={isFundPending || isFundConfirming}
+                  disabled={needsApproval || isFundPending || isFundConfirming}
+                >
+                  {isWrongChain
+                    ? 'Switch to Arc'
+                    : isFundPending
+                    ? 'Confirm in wallet…'
+                    : isFundConfirming
+                    ? 'Funding…'
+                    : `Fund ${formatUnits(totalAmount, USDC.decimals)} USDC`}
+                </Button>
+              </>
+            )}
+
+            {/* ── Cross-chain payment (CCTP V2) ── */}
+            {payTab === 'crosschain' && (
+              <CrossChainPay
+                escrowId={escrowId}
+                totalAmount={totalAmount}
+                onSuccess={() => navigate(`/escrow/${id}`)}
+              />
+            )}
           </div>
         )}
       </Card>

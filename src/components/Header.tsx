@@ -20,6 +20,7 @@ export function Header({ page }: { page: string }) {
         {[
           { label: 'Dashboard', href: '/' },
           { label: 'Create', href: '/create' },
+          { label: 'Pay', href: '/pay' },
           { label: 'Profile', href: '/profile' },
           { label: 'Deploy', href: '/deploy' },
         ].map(({ label, href }) => (

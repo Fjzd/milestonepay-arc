@@ -25,6 +25,8 @@ function parsePath(hash: string): { path: string; params: Record<string, string>
   if (m) return { path: '/profile/:address', params: { address: m[1] } }
   // Match /deploy
   if (raw === '/deploy') return { path: '/deploy', params: {} }
+  // Match /pay (entry page — no id)
+  if (raw === '/pay') return { path: '/pay', params: {} }
   return { path: raw, params: {} }
 }
 
